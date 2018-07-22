@@ -17,22 +17,37 @@
 // Include main BugTrap header.
 #include <BugTrap.h>
 
-// Link with one of BugTrap libraries.
-#if defined _M_IX86
- #ifdef _UNICODE
-  #pragma comment(lib, "BugTrapU.lib")
- #else
-  #pragma comment(lib, "BugTrap.lib")
- #endif
-#elif defined _M_X64
- #ifdef _UNICODE
-  #pragma comment(lib, "BugTrapU-x64.lib")
- #else
-  #pragma comment(lib, "BugTrap-x64.lib")
- #endif
+#define _QUOUTE(x) #x
+#define _PASTE(x) x
+
+#ifdef _UNICODE
+#	define UNICODE_POSTFIX "U"
 #else
- #error CPU architecture is not supported.
+#	define UNICODE_POSTFIX ""
 #endif
+
+#ifdef _DEBUG
+#	define DEBUG_POSTFIX "D"
+#else
+#	define DEBUG_POSTFIX ""
+#endif
+
+#if defined _M_IX86
+#	define ARCHITECTURE_POSTFIX ""
+#elif defined _M_X64
+#	define ARCHITECTURE_POSTFIX "-x64"
+#else
+#	error CPU architecture is not supported.
+#endif
+
+// Make BugTrap library name
+#define BUGTRAP_LIB_NAME "BugTrap"##_PASTE(UNICODE_POSTFIX)##_PASTE(DEBUG_POSTFIX)##_PASTE(ARCHITECTURE_POSTFIX)##".lib"
+#define LINK_WITH_MSG message("Link with: "##BUGTRAP_LIB_NAME)
+#define LINK_WITH comment(lib, BUGTRAP_LIB_NAME)
+
+// Link with one of BugTrap libraries.
+#pragma LINK_WITH_MSG
+#pragma LINK_WITH
 
 // Enable Common Controls support
 
