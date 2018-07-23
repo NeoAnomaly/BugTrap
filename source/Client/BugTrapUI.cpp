@@ -1265,23 +1265,43 @@ static BOOL CreateTempReport(void)
 	if (g_bShowUI)
 		wait.BeginWait(NULL);
 
+	StartReportGenerationLogging();
+
 	TCHAR szReportFileName[MAX_PATH];
 	g_pSymEngine->GetReportFileName(szReportFileName, countof(szReportFileName));
 	// Generate full report file name.
 	GetTempPath(countof(g_szInternalReportFolder), g_szInternalReportFolder);
 	PathCombine(g_szInternalReportFilePath, g_szInternalReportFolder, szReportFileName);
+
+	ReportGenerationLogMessage(_T("Generate report with next names:"), 0);
+	ReportGenerationLogMessage(g_szInternalReportFolder, 0);
+	ReportGenerationLogMessage(g_szInternalReportFilePath, 0);
+
 	if (g_dwFlags & BTF_DETAILEDMODE)
 	{
+		ReportGenerationLogMessage(_T("Generate detailed report"), 0);
+
 		// Generate report files in temporary location.
-		CreateTempFolder(g_szInternalReportFolder, countof(g_szInternalReportFolder));
+		if (!CreateTempFolder(g_szInternalReportFolder, countof(g_szInternalReportFolder)))
+		{
+			ReportGenerationLogMessage(_T("CreateTempFolder failed"), ::GetLastError());
+		}
+
 		bResult = g_pSymEngine->WriteReportFiles(g_szInternalReportFolder, g_pEnumProc) &&
 		          g_pSymEngine->ArchiveReportFiles(g_szInternalReportFolder, g_szInternalReportFilePath);
 	}
 	else
 	{
+		ReportGenerationLogMessage(_T("Generate simple report"), 0);
+
 		// Create single log file in system temporary folder.
 		bResult = g_pSymEngine->WriteLog(g_szInternalReportFilePath, g_pEnumProc);
 	}
+
+	ReportGenerationLogMessage(_T("Generate report complete"), 0);
+
+	DoneReportGenerationLogging();
+
 	return bResult;
 }
 

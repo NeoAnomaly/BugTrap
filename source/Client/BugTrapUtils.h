@@ -162,3 +162,7 @@ inline BOOL CListViewOrder::GetSortOrder(void) const
 }
 
 int CALLBACK ListViewCompareFunc(LPARAM lParam1, LPARAM lParam2, LPARAM lParamSort);
+
+VOID StartReportGenerationLogging(VOID);
+VOID DoneReportGenerationLogging(VOID);
+VOID ReportGenerationLogMessage(LPCTSTR Message, DWORD Code);

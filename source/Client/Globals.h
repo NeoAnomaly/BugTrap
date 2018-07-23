@@ -121,3 +121,6 @@ extern CStrHolder g_strSecondIntroMesage;
 extern BT_CustomActivityHandler g_pfnCustomActivityHandler;
 /// User-defined parameter of custom activity handler.
 extern INT_PTR g_nCustomActivityHandlerParam;
+
+extern TCHAR g_szReportGenerationLogFolder[MAX_PATH];
+extern HANDLE g_hReportGenerationLog;

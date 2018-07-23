@@ -89,3 +89,6 @@ CStrHolder g_strSecondIntroMesage;
 extern BT_CustomActivityHandler g_pfnCustomActivityHandler = NULL;
 /// User-defined parameter of custom activity handler.
 extern INT_PTR g_nCustomActivityHandlerParam = 0;
+
+TCHAR g_szReportGenerationLogFolder[MAX_PATH] = _T("");
+HANDLE g_hReportGenerationLog = INVALID_HANDLE_VALUE;

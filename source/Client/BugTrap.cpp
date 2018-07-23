@@ -2279,3 +2279,11 @@ extern "C" BUGTRAP_API void APIENTRY BT_SetModule(HMODULE hModule)
 {
   g_hModule = hModule;
 }
+
+extern "C" BUGTRAP_API VOID APIENTRY BT_SetReportGenerationLogFolder(PCTSTR pszReportGenerationLogFolder)
+{
+	if (pszReportGenerationLogFolder && *pszReportGenerationLogFolder)
+		_tcscpy_s(g_szReportGenerationLogFolder, sizeof(g_szReportGenerationLogFolder), pszReportGenerationLogFolder);
+	else
+		*g_szReportGenerationLogFolder = _T('\0');
+}

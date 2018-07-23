@@ -464,4 +464,89 @@ int CALLBACK ListViewCompareFunc(LPARAM lParam1, LPARAM lParam2, LPARAM lParamSo
 	return (pLVSortParams->bAscending ? iResult : -iResult);
 }
 
+VOID StartReportGenerationLogging(VOID)
+{
+	if (*g_szReportGenerationLogFolder == _T('\0'))
+	{
+		return;
+	}
+
+	TCHAR szLogFilePath[MAX_PATH] = { 0 };
+	SYSTEMTIME localTime = { 0 };
+
+	GetLocalTime(&localTime);
+
+	_stprintf_s(
+		szLogFilePath, 
+		countof(szLogFilePath),
+		_T("%s\\BT_report_generation_%02d%02d%02d-%02d%02d%02d.log"),
+		g_szReportGenerationLogFolder,
+		localTime.wYear % 100,
+		localTime.wMonth,
+		localTime.wDay,
+		localTime.wHour,
+		localTime.wMinute,
+		localTime.wSecond
+	);
+
+	if (!CreateParentFolder(szLogFilePath))
+	{
+		return;
+	}
+
+	g_hReportGenerationLog = CreateFile(
+		szLogFilePath,
+		GENERIC_WRITE,
+		FILE_SHARE_READ,
+		NULL,
+		OPEN_ALWAYS,
+		FILE_ATTRIBUTE_NORMAL,
+		NULL
+	);
+
+	if (g_hReportGenerationLog == INVALID_HANDLE_VALUE)
+	{
+		return;
+	}
+
+
+}
+
+VOID DoneReportGenerationLogging(VOID)
+{
+	if (g_hReportGenerationLog != INVALID_HANDLE_VALUE)
+	{
+		CloseHandle(g_hReportGenerationLog);
+	}
+}
+
+VOID ReportGenerationLogMessage(LPCTSTR Message, DWORD Code)
+{
+	if (g_hReportGenerationLog != INVALID_HANDLE_VALUE)
+	{
+		TCHAR szLogEntry[2048] = { 0 };
+
+		int sizeCch = _stprintf_s(
+			szLogEntry,
+			countof(szLogEntry),
+			_T("%s. Code: %u\n"),
+			Message, 
+			Code
+		);
+
+		if (sizeCch > 0)
+		{
+			DWORD bytesWritten;
+
+			WriteFile(
+				g_hReportGenerationLog,
+				szLogEntry,
+				sizeCch * sizeof(TCHAR),
+				&bytesWritten,
+				nullptr
+			);
+		}
+	}
+}
+
 /** @} */

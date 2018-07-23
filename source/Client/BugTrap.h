@@ -831,6 +831,8 @@ BUGTRAP_API LONG CALLBACK BT_CppFilter(PEXCEPTION_POINTERS pExceptionPointers);
  */
 BUGTRAP_API void CDECL BT_CallCppFilter(void);
 
+BUGTRAP_API VOID APIENTRY BT_SetReportGenerationLogFolder(PCTSTR pszReportGenerationLogFolder);
+
 #ifdef _MANAGED
 /**
  * @brief Executes .NET exception filter.

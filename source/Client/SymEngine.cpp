@@ -2919,10 +2919,16 @@ BOOL CSymEngine::AddFileToArchive(zipFile hZipFile, PCTSTR pszFilePath, PCTSTR p
 	pszFileNameA = pszFileName;
 #endif
 	BOOL bResult = FALSE;
+
+	ReportGenerationLogMessage(pszFilePath, 0);
+
 	HANDLE hFile = CreateFile(pszFilePath, GENERIC_READ, FILE_SHARE_READ | FILE_SHARE_WRITE, NULL, OPEN_EXISTING, FILE_ATTRIBUTE_NORMAL, NULL);
 	if (hFile != INVALID_HANDLE_VALUE)
 	{
 		DWORD dwFileSize = GetFileSize(hFile, NULL);
+
+		ReportGenerationLogMessage(_T("FileSize"), dwFileSize);
+
 		DWORD dwBufferSize = min(dwFileSize, g_dwMaxBufferSize);
 		PBYTE pFileBuffer = new BYTE[dwBufferSize];
 		if (pFileBuffer)
@@ -2934,22 +2940,46 @@ BOOL CSymEngine::AddFileToArchive(zipFile hZipFile, PCTSTR pszFilePath, PCTSTR p
 				{
 					DWORD dwProcessedNumber = 0;
 					bResult = ReadFile(hFile, pFileBuffer, dwBufferSize, &dwProcessedNumber, NULL);
-					if (! bResult || dwProcessedNumber == 0)
+					if (!bResult)
+					{
+						ReportGenerationLogMessage(_T("ReadFile failed"), ::GetLastError());
+					}
+					if (!bResult || dwProcessedNumber == 0)
+					{
 						break;
+					}
 					bResult = zipWriteInFileInZip(hZipFile, pFileBuffer, dwProcessedNumber) == Z_OK;
-					if (! bResult)
+					if (!bResult)
+					{
+						ReportGenerationLogMessage(_T("zipWriteInFileInZip failed"), 0);
 						break;
+					}
 				}
 				if (zipCloseFileInZip(hZipFile) != Z_OK)
+				{
+					ReportGenerationLogMessage(_T("zipCloseFileInZip failed"), 0);
 					bResult = FALSE;
+				}
+			}
+			else
+			{
+				ReportGenerationLogMessage(_T("zipOpenNewFileInZip failed"), 0);
 			}
 			delete[] pFileBuffer;
+		}
+		else
+		{
+			ReportGenerationLogMessage(_T("Can't allocate memory for read buffer"), 0);
 		}
 		CloseHandle(hFile);
 	}
 	else
 	{
 		DWORD dwLastError = GetLastError();
+
+		ReportGenerationLogMessage(_T("CreateFile failed"), dwLastError);
+		ReportGenerationLogMessage(_T("file attr"), GetFileAttributes(pszFilePath));
+
 		if (dwLastError == ERROR_FILE_NOT_FOUND ||
 			dwLastError == ERROR_PATH_NOT_FOUND ||
 			GetFileAttributes(pszFilePath) == INVALID_FILE_ATTRIBUTES)
@@ -2969,9 +2999,16 @@ BOOL CSymEngine::WriteDump(PCTSTR pszFileName)
 	_ASSERTE(FMiniDumpWriteDump != NULL);
 	if (FMiniDumpWriteDump == NULL)
 		return FALSE;
+
+	ReportGenerationLogMessage(pszFileName, 0);
+
 	HANDLE hFile = CreateFile(pszFileName, GENERIC_WRITE, 0, NULL, CREATE_ALWAYS, FILE_ATTRIBUTE_NORMAL, NULL);
 	if (hFile == INVALID_HANDLE_VALUE)
+	{
+		ReportGenerationLogMessage(_T("!!! Minidump CreateFile failed"), ::GetLastError());
+
 		return FALSE;
+	}
 	HANDLE hProcess = GetCurrentProcess();
 	DWORD dwProcessID = GetCurrentProcessId();
 	BOOL bResult;
@@ -2985,6 +3022,12 @@ BOOL CSymEngine::WriteDump(PCTSTR pszFileName)
 	}
 	else
 		bResult = FMiniDumpWriteDump(hProcess, dwProcessID, hFile, g_eDumpType, NULL, NULL, NULL);
+
+	if (!bResult)
+	{
+		ReportGenerationLogMessage(_T("!!! MiniDumpWriteDump failed"), ::GetLastError());
+	}
+
 	CloseHandle(hFile);
 	if (! bResult)
 		DeleteFile(pszFileName);
@@ -3006,11 +3049,21 @@ BOOL CSymEngine::WriteReportFiles(PCTSTR pszFolderName, CEnumProcess* pEnumProce
 	_stprintf_s(szLogFileName, countof(szLogFileName), _T("errorlog.%s"), pszLogExtension);
 	TCHAR szFullLogFileName[MAX_PATH];
 	PathCombine(szFullLogFileName, pszFolderName, szLogFileName);
-	if (! WriteLog(szFullLogFileName, pEnumProcess))
+	if (!WriteLog(szFullLogFileName, pEnumProcess))
+	{
+		ReportGenerationLogMessage(_T("WriteLog failed"), 0);
 		return FALSE;
+	}
 
 	if (g_eDumpType != MiniDumpNoDump)
 	{
+		ReportGenerationLogMessage(_T("Start writing minidump..."), 0);
+
+		if (FMiniDumpWriteDump == nullptr)
+		{
+			ReportGenerationLogMessage(_T("!!! FMiniDumpWriteDump is null"), 0);
+		}
+
 		TCHAR szFullDumpFileName[MAX_PATH];
 		PathCombine(szFullDumpFileName, pszFolderName, _T("crashdump.dmp"));
 		if (FMiniDumpWriteDump != NULL && ! WriteDump(szFullDumpFileName))
@@ -3043,9 +3096,16 @@ BOOL CSymEngine::ArchiveReportFiles(PCTSTR pszReportFolder, PCTSTR pszArchiveFil
 #else
 	pszArchiveFileNameA = pszArchiveFileName;
 #endif
+
+	ReportGenerationLogMessage(_T("Start archiving report files..."), 0);
+
 	zipFile hZipFile = zipOpen(pszArchiveFileNameA, APPEND_STATUS_CREATE);
-	if (! hZipFile)
+	if (!hZipFile)
+	{
+		ReportGenerationLogMessage(_T("!!! zipopen failed"), 0);
+
 		return FALSE;
+	}
 
 	BOOL bResult = TRUE;
 	TCHAR szFindFileTemplate[MAX_PATH];
@@ -3062,12 +3122,18 @@ BOOL CSymEngine::ArchiveReportFiles(PCTSTR pszReportFolder, PCTSTR pszArchiveFil
 				TCHAR szFilePath[MAX_PATH];
 				PathCombine(szFilePath, pszReportFolder, FindData.cFileName);
 				bResult = AddFileToArchive(hZipFile, szFilePath, FindData.cFileName);
-				if (! bResult)
+				if (!bResult)
+				{
 					break;
+				}
 			}
 			bMore = FindNextFile(hFindFile, &FindData);
 		}
 		FindClose(hFindFile);
+	}
+	else
+	{
+		ReportGenerationLogMessage(_T("!!! FindFirstFile failed"), ::GetLastError());
 	}
 
 	if (bResult)
@@ -3086,9 +3152,15 @@ BOOL CSymEngine::ArchiveReportFiles(PCTSTR pszReportFolder, PCTSTR pszArchiveFil
 	}
 
 	if (zipClose(hZipFile, NULL) != ZIP_OK)
+	{
+		ReportGenerationLogMessage(_T("zipClose failed"), 0);
+
 		bResult = FALSE;
+	}
+
 	if (! bResult)
 		DeleteFile(pszArchiveFileName);
+
 	return bResult;
 }
 
